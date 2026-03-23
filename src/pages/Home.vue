@@ -35,7 +35,7 @@ const { showLevelUpAnimation, levelUpInfo, levelUpPhase, triggerLevelUp } = useL
 const { triggerAnimation: triggerPetStatusAnimation } = usePetStatusAnimation()
 
 // 使用全局状态
-const { classes, currentClass, loadClasses, createClass } = useClasses()
+const { classes, currentClass, loadClasses, createClass, syncCurrentClass } = useClasses()
 const { students, loadStudents, changePet, batchEvaluate, addEvaluation } = useStudents()
 const { allTags, loadTags, getStudentTags } = useTags()
 const { showLoginModal, closeLoginModal } = useLoginModal()
@@ -289,16 +289,22 @@ function toggleStudentSelect(studentId: string) {
 onMounted(async () => {
   try {
     await loadClasses()
+    syncCurrentClass()
     await loadRules()
     await loadTags()
-    await loadStudents()
+    if (currentClass.value) {
+      await loadStudents()
+    }
   } finally {
     nextTick(() => { isLoaded.value = true })
   }
 })
 
 onActivated(() => {
-  loadStudents()
+  syncCurrentClass()
+  if (currentClass.value) {
+    loadStudents()
+  }
   loadRules()
   loadTags()
 })
@@ -386,7 +392,7 @@ onActivated(() => {
 
       <Transition name="fade" mode="out-in">
         <!-- 无班级状态 -->
-        <div v-if="classes.length === 0" key="no-class" class="flex flex-col items-center justify-center min-h-[60vh]">
+        <div v-if="!currentClass && classes.length === 0" key="no-class" class="flex flex-col items-center justify-center min-h-[60vh]">
           <div class="text-8xl mb-6 animate-float">🏫</div>
           <h3 class="text-2xl font-bold text-gray-700 mb-3">还没有班级</h3>
           <p class="text-gray-500 mb-6 text-lg">创建一个班级，开启你的宠物园之旅吧！</p>
@@ -396,7 +402,7 @@ onActivated(() => {
         </div>
 
         <!-- 无学生状态 -->
-        <div v-else-if="students.length === 0" key="no-student" class="flex flex-col items-center justify-center min-h-[60vh]">
+        <div v-else-if="currentClass && students.length === 0" key="no-student" class="flex flex-col items-center justify-center min-h-[60vh]">
           <div class="text-8xl mb-6 animate-float">👨‍🎓</div>
           <h3 class="text-2xl font-bold text-gray-700 mb-3">还没有学生</h3>
           <p class="text-gray-500 mb-6 text-lg">添加学生，让他们领养可爱的宠物吧！</p>

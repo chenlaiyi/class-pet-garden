@@ -96,6 +96,41 @@ export function initDb() {
       FOREIGN KEY (student_id) REFERENCES students(id),
       FOREIGN KEY (tag_id) REFERENCES student_tags(id)
     );
+
+    -- 宠物实例表
+    CREATE TABLE IF NOT EXISTS pet_instances (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      template_id TEXT NOT NULL,
+      code TEXT UNIQUE NOT NULL,
+      display_name TEXT NOT NULL,
+      student_id TEXT,
+      class_id TEXT,
+      level INTEGER DEFAULT 1,
+      exp INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'alive',
+      adopted_at INTEGER,
+      created_at INTEGER,
+      updated_at INTEGER,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (student_id) REFERENCES students(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id)
+    );
+
+    -- 宠物载体表（二维码/NFC）
+    CREATE TABLE IF NOT EXISTS pet_carriers (
+      id TEXT PRIMARY KEY,
+      pet_instance_id TEXT NOT NULL,
+      carrier_type TEXT NOT NULL,
+      short_code TEXT UNIQUE,
+      physical_uid TEXT,
+      display_code TEXT,
+      status TEXT DEFAULT 'active',
+      activated_at INTEGER,
+      created_at INTEGER,
+      updated_at INTEGER,
+      FOREIGN KEY (pet_instance_id) REFERENCES pet_instances(id)
+    );
   `)
 
   // 迁移：添加 pet_status 字段（如果不存在）

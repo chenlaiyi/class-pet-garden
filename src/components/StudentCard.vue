@@ -2,6 +2,7 @@
 import type { Student } from '@/types'
 import { getPetType, getLevelProgress, getPetLevelImage, calculateLevel, DEATH_THRESHOLD, checkPetStatus } from '@/data/pets'
 import PetImage from './PetImage.vue'
+import PetAnimatedAsset from './PetAnimatedAsset.vue'
 
 interface Tag {
   id: string
@@ -157,16 +158,32 @@ function getHealthProgress(student: Student): number {
       <!-- 有宠物时 -->
       <template v-if="student.pet_type">
         <div class="w-full h-full overflow-hidden" style="border-radius: 14px 14px 0 0; margin: -1px -1px 0 -1px; width: calc(100% + 2px);">
-          <PetImage
-            :src="getStudentPetImage(student)"
-            :alt="getPetType(student.pet_type)?.name"
-            size="full"
-            :rounded="false"
-            :show-loading="true"
-            class="w-full h-full transition-all duration-300"
-            :class="getPetStatus(student) === 'dead' ? 'grayscale opacity-50' : 
-                    getPetStatus(student) === 'injured' ? 'hue-rotate-[-10deg] brightness-95' : ''"
-          />
+          <div class="relative w-full h-full pet-stage-card">
+            <div class="pet-stage-ring"></div>
+            <div class="pet-stage-glow"></div>
+            <PetAnimatedAsset
+              v-if="getPetStatus(student) === 'alive'"
+              :pet-id="student.pet_type"
+              :level="student.pet_level"
+              mode="idle"
+              size="full"
+              :rounded="false"
+              :animation-enabled="true"
+              :background="true"
+              class="w-full h-full transition-all duration-300"
+            />
+            <PetImage
+              v-else
+              :src="getStudentPetImage(student)"
+              :alt="getPetType(student.pet_type)?.name"
+              size="full"
+              :rounded="false"
+              :show-loading="true"
+              class="w-full h-full transition-all duration-300"
+              :class="getPetStatus(student) === 'dead' ? 'grayscale opacity-50' : 
+                      getPetStatus(student) === 'injured' ? 'hue-rotate-[-10deg] brightness-95' : ''"
+            />
+          </div>
         </div>
         <!-- 受伤标记 -->
         <div
@@ -291,3 +308,36 @@ function getHealthProgress(student: Student): number {
     </div>
   </div>
 </template>
+
+<style scoped>
+.pet-stage-card {
+  position: relative;
+  isolation: isolate;
+}
+
+.pet-stage-ring {
+  position: absolute;
+  inset: 10%;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.75);
+  background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.05));
+  box-shadow: inset 0 0 0 1px rgba(251,191,36,0.14), 0 12px 28px rgba(249,115,22,0.10);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pet-stage-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  transform: translateX(-50%);
+  width: 64%;
+  height: 18%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(251,146,60,0.28) 0%, rgba(244,114,182,0.14) 50%, transparent 100%);
+  filter: blur(14px);
+  pointer-events: none;
+  z-index: 0;
+}
+</style>

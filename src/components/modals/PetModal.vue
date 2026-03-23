@@ -69,7 +69,15 @@ function close() {
                 class="w-full h-full object-contain group-hover:scale-110 transition-all duration-300 rounded-xl p-1"
                 :class="imageLoaded[pet.id] ? 'opacity-100' : 'opacity-0'"
                 @load="imageLoaded[pet.id] = true"
+                @error="imageLoaded[pet.id] = true"
               />
+              <div v-if="imageLoaded[pet.id]" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div class="w-full h-full rounded-xl bg-gradient-to-br opacity-90" :class="pet.color"></div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <div class="text-4xl mb-1">{{ pet.placeholder }}</div>
+                  <div class="text-[11px] px-2 py-0.5 rounded-full bg-white/80 text-gray-700 font-medium">{{ pet.rarity === 'epic' ? '超稀有' : pet.rarity === 'rare' ? '稀有' : '普通' }}</div>
+                </div>
+              </div>
             </div>
 
             <!-- 宠物名称 -->

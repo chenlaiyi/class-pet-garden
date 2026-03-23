@@ -10,6 +10,7 @@ interface Props {
   hoverScale?: boolean
   showLoading?: boolean
   fixedEmojiSize?: boolean
+  fallbackEmoji?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -19,7 +20,8 @@ const props = withDefaults(defineProps<Props>(), {
   roundedClass: '',
   hoverScale: true,
   showLoading: true,
-  fixedEmojiSize: false
+  fixedEmojiSize: false,
+  fallbackEmoji: '🐾'
 })
 
 const isLoaded = ref(false)
@@ -104,7 +106,7 @@ const randomEmoji = computed(() => loadingEmojis[Math.floor(Math.random() * load
         v-if="hasError" 
         class="absolute inset-0 flex items-center justify-center bg-gray-100"
       >
-        <span :class="[emojiSizeClass, 'text-gray-400']">🐕</span>
+        <span :class="[emojiSizeClass, 'text-gray-400']">{{ fallbackEmoji }}</span>
       </div>
     </Transition>
 

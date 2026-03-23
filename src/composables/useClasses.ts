@@ -16,7 +16,7 @@ export function useClasses() {
     isLoading.value = true
     try {
       const res = await api.get('/classes')
-      classes.value = res.data.classes
+      classes.value = Array.isArray(res.data?.classes) ? res.data.classes : []
       if (classes.value.length > 0) {
         const savedClassId = localStorage.getItem('pet-garden-current-class')
         const savedClass = savedClassId ? classes.value.find(c => c.id === savedClassId) : null
