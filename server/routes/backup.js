@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { db } from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { requireNotUser } from '../middleware/ownership.js'
 
 const router = Router()
 
 // 导出备份
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, requireNotUser, (req, res) => {
   const backup = {
     version: '1.0.0',
     exportedAt: new Date().toISOString(),

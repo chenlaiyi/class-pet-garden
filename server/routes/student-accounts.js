@@ -4,11 +4,12 @@ import { db } from '../db.js'
 import { hashPassword, verifyPassword } from '../utils/password.js'
 import { generateToken, verifyToken } from '../utils/token.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { requireNotUser } from '../middleware/ownership.js'
 
 const router = Router()
 
 // GET /api/student-accounts — 班级下的学生账号列表（管理员）
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, requireNotUser, (req, res) => {
   if (!req.userIsAdmin) {
     return res.status(403).json({ error: '需要管理员权限' })
   }

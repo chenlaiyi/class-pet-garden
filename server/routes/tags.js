@@ -7,6 +7,7 @@ import {
   verifyStudentsOwnership,
   listTagsForUser,
   requireAtLeastTeacher,
+  requireNotUser,
 } from '../middleware/ownership.js'
 
 const router = Router()
@@ -17,7 +18,7 @@ const PRESET_COLORS = [
 ]
 
 // 获取标签列表
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, requireNotUser, (req, res) => {
   const tags = listTagsForUser(req.userId)
   res.json({ tags })
 })

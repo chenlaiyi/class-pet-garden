@@ -163,3 +163,15 @@ export function requireAtLeastTeacher(req, res, next) {
   if (req.userRole === 'user') return res.status(403).json({ error: '权限不足，用户角色无法执行此操作' })
   next()
 }
+
+/**
+ * 禁止 user 角色访问（所有 HTTP 方法）
+ * 用于管理类路由：班级/学生/评价/规则/标签/管理后台等
+ * user 角色只能使用 arena / ranking / pet-instances(读自己的) / invite
+ */
+export function requireNotUser(req, res, next) {
+  if (req.userRole === 'user') {
+    return res.status(403).json({ error: '权限不足，该功能仅对老师开放' })
+  }
+  next()
+}

@@ -4,7 +4,7 @@ import { db } from '../db.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { verifyClassOwnership, verifyRecordOwnership, isSuperAdmin } from '../middleware/ownership.js'
 import { calculateLevel } from '../utils/level.js'
-import { requireAtLeastTeacher } from '../middleware/ownership.js'
+import { requireAtLeastTeacher, requireNotUser } from '../middleware/ownership.js'
 
 const router = Router()
 
@@ -63,7 +63,7 @@ router.post('/', authMiddleware, requireAtLeastTeacher, (req, res) => {
 })
 
 // 获取评价记录列表 — 所有角色都可查自己班级的
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, requireNotUser, (req, res) => {
   const { classId, studentId, page = 1, pageSize = 20 } = req.query
   const offset = (Number(page) - 1) * Number(pageSize)
 

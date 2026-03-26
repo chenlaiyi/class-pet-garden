@@ -7,6 +7,7 @@ import {
   verifyStudentOwnership,
   verifyStudentsOwnership,
   requireAtLeastTeacher,
+  requireNotUser,
 } from '../middleware/ownership.js'
 
 const router = Router()

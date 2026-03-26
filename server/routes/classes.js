@@ -7,21 +7,33 @@ import {
   listClassesForUser,
   isSuperAdmin,
   requireAtLeastTeacher,
+  requireNotUser,
 } from '../middleware/ownership.js'
 
 const router = Router()
 
 // 获取班级列表
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, requireNotUser, (req, res) => {
   const classes = listClassesForUser(req.userId)
   res.json({ classes })
 })
 
 // 获取班级学生列表（包含标签）
+// super_admin/teacher: 用 ownership 验证；user: 只能查自己所在的班级
 router.get('/:classId/students', authMiddleware, (req, res) => {
-  const cls = verifyClassOwnership(req.params.classId, req.userId)
-  if (!cls) {
-    return res.status(403).json({ error: '班级不存在或无权访问' })
+  let cls
+  if (req.userRole === 'user') {
+    // user: 检查是否在自己所在的班级
+    const user = db.prepare('SELECT student_id FROM users WHERE id = ?').get(req.userId)
+    if (!user?.student_id) return res.status(403).json({ error: '未绑定学生账号' })
+    const student = db.prepare('SELECT class_id FROM students WHERE id = ?').get(user.student_id)
+    if (!student || student.class_id !== req.params.classId) {
+      return res.status(403).json({ error: '班级不存在或无权访问' })
+    }
+    cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(req.params.classId)
+  } else {
+    cls = verifyClassOwnership(req.params.classId, req.userId)
+    if (!cls) return res.status(403).json({ error: '班级不存在或无权访问' })
   }
 
   const students = db.prepare('SELECT * FROM students WHERE class_id = ? ORDER BY name').all(req.params.classId)

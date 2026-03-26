@@ -6,6 +6,7 @@ import {
   verifyRuleOwnership,
   listRulesForUser,
   requireAtLeastTeacher,
+  requireNotUser,
 } from '../middleware/ownership.js'
 
 const router = Router()
@@ -107,7 +108,7 @@ function copyDefaultRules(userId) {
 }
 
 // 获取规则列表
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, requireNotUser, (req, res) => {
   let rules = listRulesForUser(req.userId)
   if (rules.length === 0) {
     copyDefaultRules(req.userId)
@@ -154,7 +155,7 @@ router.delete('/:id', authMiddleware, requireAtLeastTeacher, (req, res) => {
 })
 
 // 获取常用规则
-router.get('/frequent', authMiddleware, (req, res) => {
+router.get('/frequent', authMiddleware, requireNotUser, (req, res) => {
   const userId = req.userId
   const frequentRules = db.prepare(`
     SELECT er.reason as name, er.points, er.category, COUNT(*) as use_count
