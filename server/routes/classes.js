@@ -79,7 +79,6 @@ router.delete('/:id', authMiddleware, (req, res) => {
   res.json({ success: true })
 })
 
-export default router
 // POST /classes/join — 学生/用户通过邀请码加入班级
 router.post('/join', authMiddleware, (req, res) => {
   const { inviteCode } = req.body
@@ -118,3 +117,5 @@ router.get('/invite', authMiddleware, (req, res) => {
   const cls = db.prepare('SELECT id, name, invite_code FROM classes WHERE id = ?').get(classId)
   res.json({ classId: cls.id, className: cls.name, inviteCode: cls.invite_code })
 })
+
+export default router
