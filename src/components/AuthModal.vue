@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 
 interface Props {
@@ -20,6 +20,24 @@ const password = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
 const error = ref('')
+const inviteCode = ref('')
+// 读取 URL 中的 invite 参数
+onMounted(() => {
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('invite')
+  if (code) {
+    inviteCode.value = code
+    mode.value = 'register'
+  }
+})
+// 注册成功后清除 URL 参数
+function clearInviteParam() {
+  const url = new URL(window.location.href)
+  if (url.searchParams.has('invite')) {
+    url.searchParams.delete('invite')
+    window.history.replaceState({}, '', url.toString())
+  }
+}
 
 const title = computed(() => mode.value === 'login' ? '登录' : '注册')
 const submitText = computed(() => {
@@ -56,12 +74,14 @@ async function handleSubmit() {
     const endpoint = mode.value === 'login' ? '/auth/login' : '/auth/register'
     const res = await api.post(endpoint, {
       username: username.value.trim(),
-      password: password.value
+      password: password.value,
+      ...(mode.value === 'register' && inviteCode.value ? { inviteCode: inviteCode.value } : {})
     })
     
     if (res.data.success) {
       // 保存用户信息
       setUser(res.data.user, res.data.token)
+      clearInviteParam()
       
       emit('login', res.data.user)
       emit('close')

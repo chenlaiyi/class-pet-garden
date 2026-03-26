@@ -3,37 +3,37 @@ import { v4 as uuidv4 } from 'uuid'
 import { db } from '../db.js'
 import { hashPassword, verifyPassword } from '../utils/password.js'
 import { generateToken, verifyToken } from '../utils/token.js'
-import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
 
-// 注册
+// POST /api/auth/register
 router.post('/register', (req, res) => {
-  const { username, password } = req.body
+  const { username, password, inviteCode } = req.body
+  if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' })
+  if (password.length < 6) return res.status(400).json({ error: '密码至少6位' })
 
-  if (!username || !password) {
-    return res.status(400).json({ error: '用户名和密码不能为空' })
-  }
-
-  if (username.length < 3 || username.length > 20) {
-    return res.status(400).json({ error: '用户名长度3-20字符' })
-  }
-
-  if (password.length < 6) {
-    return res.status(400).json({ error: '密码至少6位' })
-  }
-
-  // 检查用户名是否已存在
-  const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username)
-  if (existingUser) {
-    return res.status(400).json({ error: '用户名已存在' })
-  }
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username)
+  if (existing) return res.status(400).json({ error: '用户名已存在' })
 
   const userId = uuidv4()
   const passwordHash = hashPassword(password)
+  const now = Date.now()
 
-  db.prepare('INSERT INTO users (id, username, password_hash, is_guest, created_at) VALUES (?, ?, ?, ?, ?)')
-    .run(userId, username, passwordHash, 0, Date.now())
+  db.prepare(
+    'INSERT INTO users (id, username, password_hash, is_guest, created_at) VALUES (?, ?, ?, 0, ?)'
+  ).run(userId, username, passwordHash, now)
+
+  // 如果提供了邀请码，自动入班
+  if (inviteCode) {
+    const cls = db.prepare('SELECT * FROM classes WHERE invite_code = ?').get(inviteCode.toUpperCase())
+    if (cls) {
+      const studentId = uuidv4()
+      db.prepare(
+        'INSERT INTO students (id, class_id, name, total_points, pet_level, pet_exp, pet_status, created_at) VALUES (?, ?, ?, 0, 1, 0, ?, ?)'
+      ).run(studentId, cls.id, username, 'alive', now)
+      db.prepare('UPDATE users SET student_id = ? WHERE id = ?').run(studentId, userId)
+    }
+  }
 
   const token = generateToken(userId)
   res.json({
@@ -43,46 +43,78 @@ router.post('/register', (req, res) => {
   })
 })
 
-// 登录
+// POST /api/auth/login
 router.post('/login', (req, res) => {
   const { username, password } = req.body
+  if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' })
 
-  if (!username || !password) {
-    return res.status(400).json({ error: '用户名和密码不能为空' })
-  }
-
-  const user = db.prepare('SELECT id, username, password_hash, is_guest, is_admin FROM users WHERE username = ?').get(username)
-
-  if (!user) {
-    return res.status(401).json({ error: '用户名或密码错误' })
-  }
-
-  if (!verifyPassword(password, user.password_hash)) {
-    return res.status(401).json({ error: '用户名或密码错误' })
-  }
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username)
+  if (!user) return res.status(401).json({ error: '用户名或密码错误' })
+  if (user.is_guest) return res.status(401).json({ error: '用户名或密码错误' })
+  if (!verifyPassword(password, user.password_hash)) return res.status(401).json({ error: '用户名或密码错误' })
 
   const token = generateToken(user.id)
   res.json({
     success: true,
     token,
-    user: { id: user.id, username: user.username, isGuest: !!user.is_guest, isAdmin: !!user.is_admin }
+    user: {
+      id: user.id,
+      username: user.username,
+      isGuest: false,
+      isAdmin: !!user.is_admin,
+      studentId: user.student_id || null
+    }
   })
 })
 
-// 获取当前用户信息
-router.get('/me', authMiddleware, (req, res) => {
-  const user = db.prepare('SELECT id, username, is_guest, is_admin FROM users WHERE id = ?').get(req.userId)
-  if (!user) {
-    return res.status(404).json({ error: '用户不存在' })
-  }
+// GET /api/auth/me
+router.get('/me', (req, res) => {
+  let token = req.headers.authorization?.replace('Bearer ', '')
+  if (!token || token === 'guest') return res.status(401).json({ error: '未登录' })
+  const payload = verifyToken(token)
+  if (!payload) return res.status(401).json({ error: '未登录或登录已过期' })
+
+  const user = db.prepare('SELECT id, username, is_guest, is_admin, student_id FROM users WHERE id = ?').get(payload.userId)
+  if (!user) return res.status(401).json({ error: '用户不存在' })
+
   res.json({
     user: {
       id: user.id,
       username: user.username,
       isGuest: !!user.is_guest,
-      isAdmin: !!user.is_admin
+      isAdmin: !!user.is_admin,
+      studentId: user.student_id || null
     }
   })
 })
+
+// ─── Middleware helpers ───────────────────────────────────────────────
+
+export function authMiddleware(req, res, next) {
+  let token = req.headers.authorization?.replace('Bearer ', '')
+  if (token === 'guest') {
+    const guest = db.prepare('SELECT id FROM users WHERE username = ?').get('guest')
+    if (guest) { req.userId = guest.id; req.userIsAdmin = false; return next() }
+    return res.status(401).json({ error: '游客模式不可用' })
+  }
+  const payload = verifyToken(token)
+  if (!payload) return res.status(401).json({ error: '未登录或登录已过期' })
+  req.userId = payload.userId
+  const user = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(payload.userId)
+  req.userIsAdmin = user?.is_admin === 1
+  next()
+}
+
+export function optionalAuthMiddleware(req, res, next) {
+  let token = req.headers.authorization?.replace('Bearer ', '')
+  if (token === 'guest') {
+    const guest = db.prepare('SELECT id FROM users WHERE username = ?').get('guest')
+    if (guest) { req.userId = guest.id; req.userIsAdmin = false }
+    return next()
+  }
+  const payload = verifyToken(token)
+  if (payload) { req.userId = payload.userId }
+  next()
+}
 
 export default router
