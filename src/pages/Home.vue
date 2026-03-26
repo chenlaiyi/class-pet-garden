@@ -26,9 +26,10 @@ import EvaluationModal from '@/components/modals/EvaluationModal.vue'
 import PetModal from '@/components/modals/PetModal.vue'
 import PetStatusModal from '@/components/PetStatusModal.vue'
 import ClassModal from '@/components/modals/ClassModal.vue'
+import InviteCard from '@/components/InviteCard.vue'
 
 // Auth & Toast
-const { api } = useAuth()
+const { api, isLoggedIn } = useAuth()
 const toast = useToast()
 const { confirmDialog, showConfirm, closeConfirm } = useConfirm()
 const { showLevelUpAnimation, levelUpInfo, levelUpPhase, triggerLevelUp } = useLevelUp()
@@ -431,6 +432,9 @@ onActivated(() => {
         mode="batch"
         @evaluate="selectedStudent = null; showEvalModal = true"
       />
+
+      <!-- 邀请有礼 -->
+      <InviteCard v-if="isLoggedIn" />
     </div>
 
     <!-- Modals -->

@@ -234,4 +234,30 @@ export function initDb() {
   } catch (e) {
     // 表已存在，忽略错误
   }
+
+  // 迁移：创建邀请码表（如果不存在）
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS invite_codes (
+        id TEXT PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        creator_user_id TEXT NOT NULL,
+        used_by_user_id TEXT,
+        used_at INTEGER,
+        reward_given INTEGER DEFAULT 0,
+        created_at INTEGER,
+        FOREIGN KEY (creator_user_id) REFERENCES users(id),
+        FOREIGN KEY (used_by_user_id) REFERENCES users(id)
+      )
+    `)
+  } catch (e) {
+    // 表已存在，忽略错误
+  }
+
+  // 迁移：添加 referred_by 到 users（如果不存在）
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN referred_by TEXT`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
 }

@@ -17,6 +17,7 @@ import ShibaMotionDemo from '@/pages/ShibaMotionDemo.vue'
 import PetInstances from '@/pages/PetInstances.vue'
 import PetIdentity from '@/pages/PetIdentity.vue'
 import PetCard from '@/pages/PetCard.vue'
+import RegisterPage from '@/pages/RegisterPage.vue'
 import { useAuth } from '@/composables/useAuth'
 
 const router = createRouter({
@@ -42,6 +43,7 @@ const router = createRouter({
     { path: '/pet/:code', name: 'pet-identity', component: PetIdentity },
     { path: '/identity/:id', name: 'pet-identity-by-id', component: PetIdentity },
     { path: '/card/:code', name: 'pet-card', component: PetCard },
+    { path: '/register', name: 'register', component: RegisterPage },
   ]
 })
 
