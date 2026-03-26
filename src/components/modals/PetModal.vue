@@ -10,7 +10,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  select: [petId: string]
+  select: [petId: string, petName: string]
 }>()
 
 const imageLoaded = ref<Record<string, boolean>>({})
@@ -22,7 +22,8 @@ watch(() => props.show, (show) => {
 })
 
 function select(petId: string) {
-  emit('select', petId)
+  const pet = PET_TYPES.find(p => p.id === petId)
+  emit('select', petId, pet?.name || petId)
 }
 
 function close() {
@@ -86,7 +87,8 @@ function close() {
         </div>
 
         <div class="mt-6 p-4 bg-gradient-to-r from-orange-50 via-pink-50 to-purple-50 rounded-xl text-sm text-gray-600 text-center border border-orange-100">
-          <span class="text-lg">💡</span> 点击宠物即可领养，宠物会陪伴学生一起成长！
+          <div class="mb-2 font-bold text-orange-600">📋 领养须知</div>
+          <p>领养后，宠物将与学生建立伙伴关系，共同成长。通过积分积累，宠物可升级进化，请慎重选择！</p>
         </div>
 
         <div class="flex justify-end mt-6">

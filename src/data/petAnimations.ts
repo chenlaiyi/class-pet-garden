@@ -39,6 +39,14 @@ export const PET_ANIMATION_SPECS: Record<string, PetAnimationSpec> = {
     defaultMode: 'idle',
     supportedModes: ['idle', 'tap'],
     qualityTarget: 'prototype'
+  },
+  mecha: {
+    enabled: true,
+    engine: 'css-image-rig',
+    defaultMode: 'idle',
+    supportedModes: ['idle', 'tap'],
+    qualityTarget: 'production',
+    notes: '纯 CSS 绘制机甲宠物'
   }
 }
 

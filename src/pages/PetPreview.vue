@@ -108,7 +108,7 @@ function closeDetail() {
                 <div class="relative w-36 h-36 showcase-pet-shell floating-pet group-hover:scale-110 transition-transform duration-500">
                   <div class="showcase-ring"></div>
                   <div class="showcase-glow"></div>
-                  <PetAnimatedAsset :pet-id="pet.id" :level="1" mode="idle" size="full" :rounded="false" :animation-enabled="true" :background="true" />
+                  <PetAnimatedAsset :pet-id="pet.id" :level="1" mode="idle" size="full" :rounded="false" :animation-enabled="true" :background="true" stage-style="showcase" />
                 </div>
               </div>
               <div class="relative">
@@ -146,7 +146,7 @@ function closeDetail() {
                   <div class="relative w-44 h-44 showcase-pet-shell showcase-pet-shell--mythic floating-mythic group-hover:scale-110 transition-transform duration-500">
                     <div class="showcase-ring"></div>
                     <div class="showcase-glow"></div>
-                    <PetAnimatedAsset :pet-id="pet.id" :level="1" mode="emotion" size="full" :rounded="false" :animation-enabled="true" :background="true" />
+                    <PetAnimatedAsset :pet-id="pet.id" :level="1" mode="emotion" size="full" :rounded="false" :animation-enabled="true" :background="true" stage-style="mythic" />
                   </div>
                 </div>
                 <div class="w-full md:w-1/2 relative z-10">
@@ -191,7 +191,7 @@ function closeDetail() {
                   <div class="relative w-72 h-72 md:w-80 md:h-80 detail-floating detail-stage-shell">
                     <div class="detail-stage-orbit"></div>
                     <div class="detail-stage-glow"></div>
-                    <PetAnimatedAsset :pet-id="selectedPetData.id" :level="selectedLevel" :mode="selectedPetData.rarity === 'epic' ? 'emotion' : 'idle'" size="full" :rounded="false" :animation-enabled="true" :background="true" />
+                    <PetAnimatedAsset :pet-id="selectedPetData.id" :level="selectedLevel" :mode="selectedPetData.rarity === 'epic' ? 'emotion' : 'idle'" size="full" :rounded="false" :animation-enabled="true" :background="true" :stage-style="selectedPetData.rarity === 'epic' ? 'mythic' : 'showcase'" />
                   </div>
                   <div class="absolute top-5 right-5 px-4 py-2 rounded-full text-white font-black shadow-lg bg-gradient-to-r" :class="getLevelColor(selectedLevel)">Lv.{{ selectedLevel }}</div>
                 </div>

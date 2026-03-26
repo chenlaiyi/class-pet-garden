@@ -20,5 +20,6 @@
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "exclude": ["src/pages/Students.vue"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

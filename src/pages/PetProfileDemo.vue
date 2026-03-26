@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import PetImage from '@/components/PetImage.vue'
@@ -7,9 +7,18 @@ import PetAnimatedAsset from '@/components/PetAnimatedAsset.vue'
 import { getPetLevelImage } from '@/data/pets'
 import { hasPetAnimation } from '@/data/petAnimations'
 import { usePublicPetInstance } from '@/composables/usePublicPetInstance'
+import { useNfcWrite } from '@/composables/useNfcWrite'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const { item: pet, loadByCode } = usePublicPetInstance()
+const { isWriting, writePetCode, isSupported: nfcSupported } = useNfcWrite()
+const { success: toastSuccess, error: toastError } = useToast()
+
+const cardUrl = computed(() => pet.value ? `https://pet.tapgo.cn/p/${pet.value.code}` : '')
+const qrCodeUrl = computed(() => pet.value ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(cardUrl.value)}` : '')
+const petDCI = computed(() => pet.value ? `DCI:/pet/${pet.value.code}` : '')
+const petDFC = computed(() => pet.value ? `DFC:${pet.value.template.id.toUpperCase()}-${pet.value.code}-${pet.value.level}` : '')
 
 onMounted(() => {
   loadByCode(String(route.params.code || ''))
@@ -23,6 +32,16 @@ function statusLabel(status?: string) {
 
 function canAnimate(petId?: string) {
   return petId ? hasPetAnimation(petId, 'idle') : false
+}
+
+async function handleNfcWrite() {
+  if (!pet.value) return
+  const result = await writePetCode(pet.value.code)
+  if (result.success) {
+    toastSuccess(result.message)
+  } else {
+    toastError(result.message)
+  }
 }
 </script>
 
@@ -44,7 +63,7 @@ function canAnimate(petId?: string) {
               <PetImage v-else :src="getPetLevelImage(pet.template.id, pet.level)" :alt="pet.displayName" size="full" :rounded="false" :fallback-emoji="pet.template.placeholder" />
             </div>
             <div class="flex-1">
-              <div class="text-sm text-white/80 mb-2">宠物专属页 / 演示版</div>
+              <div class="text-sm text-white/80 mb-2">宠物专属页</div>
               <h1 class="text-3xl font-bold mb-2">{{ pet.displayName }}</h1>
               <div class="flex flex-wrap gap-2 mb-4">
                 <span class="px-3 py-1 rounded-full bg-white/20 text-sm">编号 {{ pet.code }}</span>
@@ -73,6 +92,67 @@ function canAnimate(petId?: string) {
         </div>
       </div>
 
+      <!-- 二维码 + NFC 身份识别区 -->
+      <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-5">宠物身份识别</h2>
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- 二维码 -->
+          <div class="rounded-3xl bg-gradient-to-br from-orange-50 to-pink-50 p-6 flex flex-col items-center">
+            <img
+              v-if="qrCodeUrl"
+              :src="qrCodeUrl"
+              alt="宠物身份二维码"
+              class="w-48 h-48 rounded-2xl bg-white shadow-md p-2"
+            />
+            <div v-else class="w-48 h-48 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">加载中…</div>
+            <div class="mt-3 text-sm text-gray-500 text-center">用微信 / 支付宝扫一扫</div>
+          </div>
+
+          <!-- NFC -->
+          <div class="rounded-3xl bg-gradient-to-br from-purple-50 to-indigo-50 p-6 flex flex-col items-center justify-center">
+            <div class="text-5xl mb-3">📱📲</div>
+            <div class="text-center mb-4">
+              <div class="text-lg font-bold text-gray-800 mb-1">NFC · 碰一碰</div>
+              <div class="text-sm text-gray-500">将宠物入口写入 NFC 标签，碰触即识别</div>
+            </div>
+
+            <!-- 支持情况提示 -->
+            <div v-if="!nfcSupported()" class="text-sm text-amber-600 bg-amber-50 rounded-xl px-3 py-2 text-center mb-3">
+              Safari iOS 18+ / Chrome 安卓版可用，其他浏览器暂不支持
+            </div>
+
+            <!-- NFC 写入按钮 -->
+            <div class="space-y-2 w-full">
+              <button
+                class="w-full rounded-2xl bg-gradient-to-r from-purple-400 to-indigo-500 text-white font-bold py-3 text-center transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                :disabled="isWriting || !nfcSupported()"
+                @click="handleNfcWrite"
+              >
+                <span v-if="isWriting" class="flex items-center justify-center gap-2">
+                  <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  写入中…
+                </span>
+                <span v-else>📲 写入 NFC 标签</span>
+              </button>
+              <div class="text-xs text-center text-gray-400">写入后，将手机 NFC 感应区靠近标签即可打开</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DCI / DFC -->
+        <div class="grid sm:grid-cols-2 gap-3 mt-5">
+          <div class="rounded-2xl bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-100 p-4">
+            <div class="text-xs text-gray-500 mb-1 uppercase tracking-wider">DCI · 数字身份码</div>
+            <div class="font-mono font-bold text-gray-800 text-base break-all">{{ petDCI }}</div>
+          </div>
+          <div class="rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 p-4">
+            <div class="text-xs text-gray-500 mb-1 uppercase tracking-wider">DFC · 数字家族码</div>
+            <div class="font-mono font-bold text-gray-800 text-base break-all">{{ petDFC }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成长档案 -->
       <div class="grid lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
           <h2 class="text-2xl font-bold text-gray-800 mb-4">宠物成长档案</h2>
@@ -118,33 +198,3 @@ function canAnimate(petId?: string) {
     </div>
   </PageLayout>
 </template>
-
-<style scoped>
-.pet-profile-hero {
-  position: relative;
-  isolation: isolate;
-}
-
-.pet-profile-orbit {
-  position: absolute;
-  inset: 10%;
-  border-radius: 999px;
-  border: 1.5px solid rgba(255,255,255,0.72);
-  background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06));
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22), 0 18px 36px rgba(124,58,237,0.14);
-  z-index: 0;
-}
-
-.pet-profile-glow {
-  position: absolute;
-  left: 50%;
-  bottom: 10%;
-  transform: translateX(-50%);
-  width: 72%;
-  height: 20%;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(251,146,60,0.26) 0%, rgba(168,85,247,0.18) 48%, transparent 100%);
-  filter: blur(16px);
-  z-index: 0;
-}
-</style>

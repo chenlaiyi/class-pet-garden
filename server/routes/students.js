@@ -97,7 +97,7 @@ router.post('/batch-delete', authMiddleware, (req, res) => {
   res.json({ success: true, deleted: ids.length })
 })
 
-// 更新学生宠物
+// 更新学生宠物（通过 pet_instances 的 bind 接口）
 router.put('/:id/pet', authMiddleware, (req, res) => {
   const { petType } = req.body
   const now = Date.now()
@@ -114,8 +114,8 @@ router.put('/:id/pet', authMiddleware, (req, res) => {
       .run(badgeId, req.params.id, student.pet_type, now)
   }
 
-  // Update pet type and reset level/exp
-  db.prepare('UPDATE students SET pet_type = ?, pet_level = 1, pet_exp = 0 WHERE id = ?')
+  // Update pet type and reset level/exp (同时清除 pet_instance_id)
+  db.prepare('UPDATE students SET pet_type = ?, pet_instance_id = NULL, pet_level = 1, pet_exp = 0 WHERE id = ?')
     .run(petType, req.params.id)
 
   res.json({ success: true })

@@ -173,6 +173,18 @@ export const PET_TYPES: PetType[] = [
     description: '虽然现在还小，但它的心里装着大大的冒险世界。',
     placeholder: '🐉',
     color: 'from-emerald-200 to-cyan-300'
+  },
+  {
+    id: 'mecha',
+    name: '机甲战士',
+    category: 'normal',
+    image: '', // CSS 绘制，无需图片
+    levelImages: {}, // CSS 绘制，无需图片
+    rarity: 'epic',
+    personality: ['金属', '能量', '守护'],
+    description: '来自未来的机甲守护者，橙色的核心驱动着它的心跳。',
+    placeholder: '🤖',
+    color: 'from-gray-300 to-orange-400'
   }
 ]
 

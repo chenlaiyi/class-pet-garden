@@ -109,6 +109,7 @@ async function fetchUserInfo() {
 export function useAuth() {
   return {
     user,
+    userId: computed(() => user.value?.id),
     token,
     isLoggedIn,
     isGuest,

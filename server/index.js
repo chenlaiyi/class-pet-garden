@@ -17,6 +17,7 @@ import settingsRoutes from './routes/settings.js'
 import tagRoutes from './routes/tags.js'
 import adminRoutes from './routes/admin.js'
 import petInstanceRoutes from './routes/pet-instances.js'
+import arenaRoutes from './routes/arena.js'
 
 const app = express()
 const PORT = 3002
@@ -81,6 +82,7 @@ app.use('/api/settings', settingsRoutes)
 app.use('/api/tags', tagRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/pet-instances', petInstanceRoutes)
+app.use('/api/arena', arenaRoutes)
 
 // 健康检查（公开）
 app.get('/api/health', (req, res) => {

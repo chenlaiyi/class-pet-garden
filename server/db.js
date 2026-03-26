@@ -160,4 +160,78 @@ export function initDb() {
   } catch (e) {
     // 字段已存在，忽略错误
   }
+
+  // 迁移：添加 pet_instance_id 到 students（如果不存在）
+  try {
+    db.exec(`ALTER TABLE students ADD COLUMN pet_instance_id TEXT`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
+
+  // 迁移：添加积分字段到 users（如果不存在）
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN points INTEGER DEFAULT 100`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
+  // 补充：已有用户 points 为 NULL 时设默认值 100
+  try {
+    db.exec(`UPDATE users SET points = 100 WHERE points IS NULL`)
+  } catch (e) {
+    // 忽略
+  }
+
+  // 迁移：创建竞技场积分记录表（如果不存在）
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS arena_records (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        pet_instance_id TEXT NOT NULL,
+        zone_id INTEGER NOT NULL,
+        result TEXT NOT NULL,
+        points_change INTEGER NOT NULL,
+        opponent_id TEXT,
+        played_at INTEGER,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (pet_instance_id) REFERENCES pet_instances(id)
+      )
+    `)
+  } catch (e) {
+    // 表已存在，忽略错误
+  }
+
+  // 迁移：创建竞技场对战房间表（如果不存在）
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS arena_matches (
+        id TEXT PRIMARY KEY,
+        zone_id INTEGER NOT NULL,
+        invite_code TEXT UNIQUE NOT NULL,
+        p1_user_id TEXT NOT NULL,
+        p1_pet_id TEXT,
+        p1_pet_name TEXT,
+        p1_pet_template TEXT,
+        p1_pet_level INTEGER DEFAULT 1,
+        p1_pet_code TEXT,
+        p2_user_id TEXT,
+        p2_pet_id TEXT,
+        p2_pet_name TEXT,
+        p2_pet_template TEXT,
+        p2_pet_level INTEGER DEFAULT 1,
+        p2_pet_code TEXT,
+        p1_ready INTEGER DEFAULT 0,
+        p2_ready INTEGER DEFAULT 0,
+        p1_paid INTEGER DEFAULT 0,
+        p2_paid INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'waiting',
+        created_at INTEGER,
+        updated_at INTEGER,
+        FOREIGN KEY (p1_user_id) REFERENCES users(id),
+        FOREIGN KEY (p2_user_id) REFERENCES users(id)
+      )
+    `)
+  } catch (e) {
+    // 表已存在，忽略错误
+  }
 }

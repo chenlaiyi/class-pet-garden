@@ -6,12 +6,14 @@ import { useStudents } from '@/composables/useStudents'
 import { useTags } from '@/composables/useTags'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { usePetInstances } from '@/composables/usePetInstances'
 import { matchByPinyin } from '@/utils/pinyin'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import { getPetLevelImage } from '@/data/pets'
 
 import ClassModal from '@/components/modals/ClassModal.vue'
+import PetModal from '@/components/modals/PetModal.vue'
 
 const { classes, currentClass, createClass } = useClasses()
 const { students, isLoading, loadStudents, addStudent: doAddStudent, updateStudent, deleteStudent: doDeleteStudent, batchDeleteStudents, importStudents: doImportStudents } = useStudents()
@@ -52,6 +54,9 @@ const importText = ref('')
 
 const showTagModal = ref(false)
 const taggingStudent = ref<Student | null>(null)
+
+const showPetModal = ref(false)
+const adoptStudent = ref<Student | null>(null)
 
 function getPetImage(student: Student): string {
   if (!student.pet_type) return ''
@@ -145,6 +150,35 @@ async function handleImportStudents() {
 function openTagModal(student: Student | null) {
   taggingStudent.value = student
   showTagModal.value = true
+}
+
+function openAdoptModal(student: Student) {
+  adoptStudent.value = student
+  showPetModal.value = true
+}
+
+async function handlePetSelect(petId: string, petName: string) {
+  if (!adoptStudent.value) return
+  try {
+    const { createPetInstance, bindPetToStudent } = usePetInstances()
+    // 1. 创建宠物实例
+    const createResult = await createPetInstance({
+      templateId: petId,
+      displayName: petName,
+      studentId: adoptStudent.value.id,
+      classId: adoptStudent.value.class_id
+    })
+    // 2. 绑定到学生
+    if (createResult.id) {
+      await bindPetToStudent(createResult.id, adoptStudent.value.id)
+    }
+    toast.success(`已为 ${adoptStudent.value.name} 领养 ${petName}！`)
+    showPetModal.value = false
+    // 刷新学生列表
+    await loadStudents()
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || '领养失败')
+  }
 }
 
 async function toggleTag(tag: Tag) {
@@ -244,7 +278,12 @@ onActivated(() => {
             </div>
             <div v-for="student in filteredStudents" :key="student.id" class="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-50 hover:bg-gray-50/50 transition-colors items-center" :class="{ 'bg-orange-50/30': selectedIds.has(student.id) }">
               <div class="col-span-1"><input type="checkbox" :checked="selectedIds.has(student.id)" @change="toggleSelect(student.id)" class="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 cursor-pointer" /></div>
-              <div class="col-span-1"><div v-if="student.pet_type" class="w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-pink-100"><img :src="getPetImage(student)" class="w-full h-full object-contain" /></div><div v-else class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">❓</div></div>
+              <div class="col-span-1">
+                <div v-if="student.pet_type" class="w-10 h-10 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-pink-100">
+                  <img :src="getPetImage(student)" class="w-full h-full object-contain" />
+                </div>
+                <button v-else @click="openAdoptModal(student)" class="w-10 h-10 rounded-lg bg-orange-50 border-2 border-dashed border-orange-300 flex items-center justify-center text-orange-400 hover:bg-orange-100 hover:border-orange-400 transition-colors text-lg" title="领养宠物">+</button>
+              </div>
               <template v-if="editingStudent?.id === student.id">
                 <div class="col-span-2"><input v-model="editName" type="text" class="w-full border-2 border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-orange-400" @keyup.enter="handleSaveEdit" @keyup.escape="cancelEdit" /></div>
                 <div class="col-span-2"><input v-model="editStudentNo" type="text" class="w-full border-2 border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-orange-400" @keyup.enter="handleSaveEdit" @keyup.escape="cancelEdit" /></div>
@@ -267,6 +306,7 @@ onActivated(() => {
     <Transition name="modal"><div v-if="showTagModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showTagModal = false"><div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-lg font-bold mb-1">🏷️ 管理标签</h3><p class="text-sm text-gray-500 mb-4">{{ taggingStudent ? `为 ${taggingStudent.name}` : `为选中的 ${selectedIds.size} 名学生` }}管理标签</p><div v-if="allTags.length === 0" class="text-center py-6 text-gray-500"><p>暂无标签</p><router-link to="/settings" class="text-orange-500 hover:text-orange-600 text-sm mt-2 inline-block">去创建标签 →</router-link></div><div v-else class="flex flex-wrap gap-2"><button v-for="tag in allTags" :key="tag.id" @click="toggleTag(tag)" class="px-4 py-2 rounded-full text-sm font-medium transition-all" :class="isTagApplied(tag) ? 'ring-2 ring-offset-2 ring-gray-400 scale-105' : 'opacity-70 hover:opacity-100 hover:scale-105'" :style="{ backgroundColor: tag.color, color: 'white' }">{{ tag.name }}<span v-if="isTagApplied(tag)" class="ml-1">✓</span></button></div><div class="flex justify-end gap-2 mt-6"><button @click="showTagModal = false" class="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium shadow-sm hover:bg-orange-600 transition-all">完成</button></div></div></div></Transition>
     <ConfirmDialog :show="confirmDialog.show" :title="confirmDialog.title" :message="confirmDialog.message" :confirm-text="confirmDialog.confirmText" :cancel-text="confirmDialog.cancelText" :type="confirmDialog.type" @confirm="confirmDialog.onConfirm" @cancel="closeConfirm" />
     <ClassModal :show="showClassModal" @close="showClassModal = false" @submit="handleCreateClass" />
+    <PetModal :show="showPetModal" :student="adoptStudent" @close="showPetModal = false" @select="handlePetSelect" />
   </PageLayout>
 </template>
 
