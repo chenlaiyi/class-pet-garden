@@ -19,6 +19,7 @@ import adminRoutes from './routes/admin.js'
 import petInstanceRoutes from './routes/pet-instances.js'
 import arenaRoutes from './routes/arena.js'
 import inviteRoutes from './routes/invite.js'
+import studentAccountRoutes from './routes/student-accounts.js'
 
 const app = express()
 const PORT = 3002
@@ -59,6 +60,29 @@ if (classesWithoutUser.length > 0) {
   }
 }
 
+// 迁移：为没有邀请码的班级生成邀请码
+function genInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  return code
+}
+const classesWithoutCode = db.prepare('SELECT id FROM classes WHERE invite_code IS NULL').all()
+if (classesWithoutCode.length > 0) {
+  const update = db.prepare('UPDATE classes SET invite_code = ? WHERE id = ?')
+  for (const cls of classesWithoutCode) {
+    update.run(genInviteCode(), cls.id)
+  }
+  console.log(`✅ 为 ${classesWithoutCode.length} 个班级生成邀请码`)
+}
+if (classesWithoutUser.length > 0) {
+  const guest = db.prepare('SELECT id FROM users WHERE username = ?').get('guest')
+  if (guest) {
+    db.prepare('UPDATE classes SET user_id = ? WHERE user_id IS NULL').run(guest.id)
+    console.log(`✅ 迁移 ${classesWithoutUser.length} 个班级到游客用户`)
+  }
+}
+
 // 初始化默认评价规则
 const rulesCount = db.prepare('SELECT COUNT(*) as count FROM evaluation_rules').get()
 if (rulesCount && rulesCount.count === 0) {
@@ -85,6 +109,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/pet-instances', petInstanceRoutes)
 app.use('/api/arena', arenaRoutes)
 app.use('/api/invite', inviteRoutes)
+app.use('/api/student-accounts', studentAccountRoutes)
 
 // 健康检查（公开）
 app.get('/api/health', (req, res) => {

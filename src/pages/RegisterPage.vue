@@ -56,7 +56,7 @@ async function handleRegister() {
         try {
           const claimRes = await api.post('/invite/claim', { inviteCode: inviteCode.value })
           if (claimRes.data.success) {
-            toast.success(`🎉 注册成功！邀请奖励 +${claimRes.data.reward} 积分已到账`)
+            toast.success(`🎉 注册成功！🎁 邀请奖励 +${claimRes.data.reward} 积分（你 +${claimRes.data.rewardForInvitee ?? 0}）`)
           }
         } catch {
           // 邀请码无效静默忽略

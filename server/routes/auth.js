@@ -20,8 +20,8 @@ router.post('/register', (req, res) => {
   const now = Date.now()
 
   db.prepare(
-    'INSERT INTO users (id, username, password_hash, is_guest, created_at) VALUES (?, ?, ?, 0, ?)'
-  ).run(userId, username, passwordHash, now)
+    'INSERT INTO users (id, username, password_hash, is_guest, created_at, role) VALUES (?, ?, ?, 0, ?, ?)'
+  ).run(userId, username, passwordHash, now, 'user')
 
   // 如果提供了邀请码，自动入班
   if (inviteCode) {
@@ -29,8 +29,8 @@ router.post('/register', (req, res) => {
     if (cls) {
       const studentId = uuidv4()
       db.prepare(
-        'INSERT INTO students (id, class_id, name, total_points, pet_level, pet_exp, pet_status, created_at) VALUES (?, ?, ?, 0, 1, 0, ?, ?)'
-      ).run(studentId, cls.id, username, 'alive', now)
+        'INSERT INTO students (id, class_id, user_id, name, total_points, pet_level, pet_exp, pet_status, created_at) VALUES (?, ?, ?, ?, 0, 1, 0, ?, ?)'
+      ).run(studentId, cls.id, userId, username, 'alive', now)
       db.prepare('UPDATE users SET student_id = ? WHERE id = ?').run(studentId, userId)
     }
   }
@@ -39,7 +39,7 @@ router.post('/register', (req, res) => {
   res.json({
     success: true,
     token,
-    user: { id: userId, username, isGuest: false }
+    user: { id: userId, username, isGuest: false, role: 'user' }
   })
 })
 
@@ -62,6 +62,7 @@ router.post('/login', (req, res) => {
       username: user.username,
       isGuest: false,
       isAdmin: !!user.is_admin,
+      role: user.role || 'user',
       studentId: user.student_id || null
     }
   })
@@ -74,7 +75,7 @@ router.get('/me', (req, res) => {
   const payload = verifyToken(token)
   if (!payload) return res.status(401).json({ error: '未登录或登录已过期' })
 
-  const user = db.prepare('SELECT id, username, is_guest, is_admin, student_id FROM users WHERE id = ?').get(payload.userId)
+  const user = db.prepare('SELECT id, username, is_guest, is_admin, role, student_id FROM users WHERE id = ?').get(payload.userId)
   if (!user) return res.status(401).json({ error: '用户不存在' })
 
   res.json({
@@ -83,38 +84,10 @@ router.get('/me', (req, res) => {
       username: user.username,
       isGuest: !!user.is_guest,
       isAdmin: !!user.is_admin,
+      role: user.role || 'user',
       studentId: user.student_id || null
     }
   })
 })
-
-// ─── Middleware helpers ───────────────────────────────────────────────
-
-export function authMiddleware(req, res, next) {
-  let token = req.headers.authorization?.replace('Bearer ', '')
-  if (token === 'guest') {
-    const guest = db.prepare('SELECT id FROM users WHERE username = ?').get('guest')
-    if (guest) { req.userId = guest.id; req.userIsAdmin = false; return next() }
-    return res.status(401).json({ error: '游客模式不可用' })
-  }
-  const payload = verifyToken(token)
-  if (!payload) return res.status(401).json({ error: '未登录或登录已过期' })
-  req.userId = payload.userId
-  const user = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(payload.userId)
-  req.userIsAdmin = user?.is_admin === 1
-  next()
-}
-
-export function optionalAuthMiddleware(req, res, next) {
-  let token = req.headers.authorization?.replace('Bearer ', '')
-  if (token === 'guest') {
-    const guest = db.prepare('SELECT id FROM users WHERE username = ?').get('guest')
-    if (guest) { req.userId = guest.id; req.userIsAdmin = false }
-    return next()
-  }
-  const payload = verifyToken(token)
-  if (payload) { req.userId = payload.userId }
-  next()
-}
 
 export default router

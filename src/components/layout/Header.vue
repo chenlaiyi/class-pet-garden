@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useClasses } from '@/composables/useClasses'
@@ -15,7 +15,9 @@ defineProps<{
 
 const route = useRoute()
 const router = useRouter()
-const { logout, isGuest, isAdmin, username } = useAuth()
+const { logout, isGuest, isAdmin: authIsAdmin, isTeacher, isStudent, username } = useAuth()
+const isAdmin = authIsAdmin // alias to avoid shadowing the prop
+const isSuperAdmin = computed(() => authIsAdmin)
 const { classes, currentClass, selectClass, loadClasses, createClass: doCreateClass, updateClass: doUpdateClass, deleteClass: doDeleteClass, init } = useClasses()
 const toast = useToast()
 const { confirmDialog, showConfirm, closeConfirm } = useConfirm()
@@ -149,7 +151,7 @@ onMounted(() => {
                   <span>{{ cls.name }}</span>
                 </button>
               </div>
-              <div class="border-t border-gray-100 mt-1 pt-1">
+              <div v-if="isAdmin" class="border-t border-gray-100 mt-1 pt-1">
                 <button @click="openCreateClassModal" class="w-full text-left px-4 py-2 text-sm hover:bg-gradient-to-r hover:from-orange-50 hover:to-pink-50 transition-colors">➕ 新建班级</button>
                 <button v-if="currentClass" @click="openEditClassModal" class="w-full text-left px-4 py-2 text-sm hover:bg-gradient-to-r hover:from-orange-50 hover:to-pink-50 transition-colors">✏️ 重命名班级</button>
                 <button v-if="currentClass" @click="handleDeleteClass" class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">🗑️ 删除班级</button>
@@ -186,14 +188,19 @@ onMounted(() => {
     <!-- 第二行：导航 -->
     <div class="px-4 py-2 flex items-center border-t border-white/20 bg-white/10">
       <nav class="flex items-center gap-1">
+        <!-- 所有人可见 -->
         <router-link to="/" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🏠 首页</router-link>
-        <router-link to="/ranking" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/ranking') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🏆 排行</router-link>
-        <router-link to="/records" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/records') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">📋 记录</router-link>
-        <router-link to="/students" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/students') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">👥 学生</router-link>
         <router-link to="/preview" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/preview') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">📖 图鉴</router-link>
-        <router-link to="/settings" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/settings') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">⚙️ 设置</router-link>
+        <router-link to="/ranking" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/ranking') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🏆 排行</router-link>
         <router-link to="/arena" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/arena') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🎮 竞技场</router-link>
-        <router-link v-if="isAdmin" to="/admin" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/admin') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🔐 管理</router-link>
+        <!-- 老师/管理员可见 -->
+        <router-link v-if="isTeacher" to="/records" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/records') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">📋 记录</router-link>
+        <router-link v-if="isTeacher" to="/students" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/students') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">👥 学生</router-link>
+        <router-link v-if="isTeacher" to="/settings" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/settings') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">⚙️ 设置</router-link>
+        <!-- 仅 super_admin 可见 -->
+        <router-link v-if="isSuperAdmin" to="/admin" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/admin') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🔐 管理</router-link>
+        <!-- 仅学生可见 -->
+        <router-link v-if="isStudent" to="/my" class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all" :class="isActive('/my') ? 'bg-white text-orange-600 shadow-md' : 'text-white/90 hover:bg-white/20'">🐾 我的宠物</router-link>
       </nav>
     </div>
   </header>

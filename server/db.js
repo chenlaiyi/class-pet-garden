@@ -260,4 +260,43 @@ export function initDb() {
   } catch (e) {
     // 字段已存在，忽略错误
   }
+
+  // 迁移：添加 student_id 到 users（关联学生账号，如果不存在）
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN student_id TEXT UNIQUE`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
+
+  // 迁移：添加 invite_code 到 classes（班级邀请码，如果不存在）
+  try {
+    db.exec(`ALTER TABLE classes ADD COLUMN invite_code TEXT UNIQUE`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
+
+  // 迁移：添加 role / teacher_id 到 users（三层权限体系）
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN teacher_id TEXT`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
+  // super_admin 回写（本地代码层 is_admin=1 的）
+  try {
+    db.exec(`UPDATE users SET role = 'super_admin' WHERE is_admin = 1 AND role IS NULL`)
+  } catch (e) {
+    // 忽略
+  }
+
+  // 迁移：添加 user_id 到 students（记录创建者）
+  try {
+    db.exec(`ALTER TABLE students ADD COLUMN user_id TEXT`)
+  } catch (e) {
+    // 字段已存在，忽略错误
+  }
 }

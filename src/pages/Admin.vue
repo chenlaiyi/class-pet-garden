@@ -5,25 +5,77 @@ import { useAuth } from '@/composables/useAuth'
 import { useToast } from '@/composables/useToast'
 import PageLayout from '@/components/layout/PageLayout.vue'
 
-const { isAdmin, isGuest, api } = useAuth()
+const { isAdmin, isTeacher, isGuest, api } = useAuth()
 const toast = useToast()
 const router = useRouter()
 
+const isSuperAdmin = isAdmin // alias
+
 interface TeacherClass { id: string; name: string; student_count: number; eval_count: number }
 interface Teacher { id: string; username: string; isAdmin: boolean; createdAt: number; classCount: number; totalStudents: number; totalEvals: number; classes: TeacherClass[] }
+interface StudentUser { id: string; username: string; created_at: number; role: string; teacher_id: string; student_id: string; student_name: string; class_name: string; class_id: string }
 interface Stats { teachers: number; classes: number; students: number; evaluations: number; todayEvaluations: number }
 interface DailyStat { date: string; newUsers: number; newClasses: number; newStudents: number; evaluations: number }
 
 const teachers = ref<Teacher[]>([])
+const users = ref<StudentUser[]>([])
 const stats = ref<Stats | null>(null)
 const dailyStats = ref<DailyStat[]>([])
 const isLoading = ref(true)
 const expandedTeacher = ref<string | null>(null)
-const activeTab = ref<'teachers' | 'stats'>('teachers')
+const activeTab = ref<'teachers' | 'stats' | 'users'>('teachers')
+
+// 弹窗状态
+const showUserModal = ref(false)
+const newUser = ref({ username: '', password: '' })
+const creating = ref(false)
+
+// 老师端加载自己管理的用户
+async function loadTeacherUsers() {
+  try {
+    const res = await api.get('/admin/my-users')
+    users.value = res.data.users
+  } catch { /* 静默 */ }
+}
+
+async function createTeacherUser() {
+  if (!newUser.value.username || !newUser.value.password) { toast.warning('请填写用户名和密码'); return }
+  creating.value = true
+  try {
+    await api.post('/admin/my-users', { username: newUser.value.username, password: newUser.value.password })
+    toast.success('创建成功')
+    showUserModal.value = false
+    newUser.value = { username: '', password: '' }
+    await loadTeacherUsers()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '创建失败')
+  } finally {
+    creating.value = false
+  }
+}
+
+async function deleteTeacherUser(id: string) {
+  if (!confirm('确定删除该用户账号？')) return
+  try {
+    await api.delete(`/admin/my-users/${id}`)
+    toast.success('删除成功')
+    await loadTeacherUsers()
+  } catch (e: any) {
+    toast.error(e.response?.data?.error || '删除失败')
+  }
+}
 
 onMounted(async () => {
-  if (isGuest.value || !isAdmin.value) { toast.error('需要管理员权限'); router.push('/'); return }
-  await loadData()
+  if (isGuest.value) { toast.error('需要登录'); router.push('/'); return }
+  if (isSuperAdmin) {
+    await loadData()
+  } else if (isTeacher) {
+    activeTab.value = 'users'
+    await loadTeacherUsers()
+    isLoading.value = false
+  } else {
+    toast.error('需要老师或管理员权限'); router.push('/')
+  }
 })
 
 async function loadData() {
@@ -115,14 +167,23 @@ const weekTotal = computed(() => ({
       <!-- 页签切换 -->
       <div class="bg-white rounded-xl shadow-sm overflow-hidden">
         <div class="flex border-b border-gray-100">
+          <!-- 老师+管理员都有：用户账号 -->
           <button 
+            @click="activeTab = 'users'"
+            class="flex-1 px-4 py-3 text-sm font-medium transition-colors"
+            :class="activeTab === 'users' ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50' : 'text-gray-500 hover:text-gray-700'"
+          >
+            👥 用户账号
+          </button>
+          <!-- 仅 super_admin -->
+          <button v-if="isSuperAdmin" 
             @click="activeTab = 'teachers'"
             class="flex-1 px-4 py-3 text-sm font-medium transition-colors"
             :class="activeTab === 'teachers' ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50' : 'text-gray-500 hover:text-gray-700'"
           >
             👨‍🏫 老师列表
           </button>
-          <button 
+          <button v-if="isSuperAdmin" 
             @click="activeTab = 'stats'; loadDailyStats()"
             class="flex-1 px-4 py-3 text-sm font-medium transition-colors"
             :class="activeTab === 'stats' ? 'text-orange-600 border-b-2 border-orange-500 bg-orange-50/50' : 'text-gray-500 hover:text-gray-700'"
@@ -131,7 +192,34 @@ const weekTotal = computed(() => ({
           </button>
         </div>
 
-        <!-- 老师列表 -->
+        <!-- 用户账号列表（老师+管理员） -->
+        <div v-if="activeTab === 'users'">
+          <div class="p-4 flex justify-end">
+            <button @click="showUserModal = true" class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-4 py-2 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity">
+              ➕ 新建用户账号
+            </button>
+          </div>
+          <div v-if="users.length === 0" class="p-8 text-center text-gray-400">暂无用户账号</div>
+          <div v-else class="divide-y divide-gray-100">
+            <div v-for="user in users" :key="user.id" class="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
+                  {{ user.username.charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="font-medium text-gray-800">{{ user.username }}</div>
+                  <div class="text-xs text-gray-400">{{ user.student_name || '未关联学生' }} · {{ user.class_name || '未分班' }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-xs text-gray-400">{{ formatDate(user.created_at) }}</div>
+                <button v-if="isTeacher" @click="deleteTeacherUser(user.id)" class="text-red-400 hover:text-red-600 text-sm px-2 py-1 rounded">删除</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 老师列表（仅 super_admin） -->
         <div v-if="activeTab === 'teachers'">
           <div v-if="teachers.length === 0" class="p-8 text-center text-gray-400">暂无老师数据</div>
           <div v-else class="divide-y divide-gray-100">
@@ -268,6 +356,31 @@ const weekTotal = computed(() => ({
         </div>
       </div>
     </div>
+
+    <!-- 新建用户弹窗 -->
+    <Transition name="modal">
+      <div v-if="showUserModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showUserModal = false">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <h3 class="text-lg font-bold mb-4">➕ 新建用户账号</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-sm text-gray-600 mb-1 block">用户名</label>
+              <input v-model="newUser.username" type="text" placeholder="输入用户名" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-orange-400 transition-colors" />
+            </div>
+            <div>
+              <label class="text-sm text-gray-600 mb-1 block">密码</label>
+              <input v-model="newUser.password" type="password" placeholder="至少6位" class="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-orange-400 transition-colors" @keyup.enter="createTeacherUser" />
+            </div>
+          </div>
+          <div class="flex gap-3 mt-5">
+            <button @click="showUserModal = false" class="flex-1 py-2.5 text-gray-500 rounded-xl font-medium hover:bg-gray-100 transition-colors">取消</button>
+            <button @click="createTeacherUser" :disabled="creating" class="flex-1 py-2.5 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-xl font-bold disabled:opacity-50 transition-all">
+              {{ creating ? '创建中...' : '创建账号' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </PageLayout>
 </template>
 
@@ -275,4 +388,6 @@ const weekTotal = computed(() => ({
 .expand-enter-active, .expand-leave-active { transition: all 0.2s ease; overflow: hidden; }
 .expand-enter-from, .expand-leave-to { opacity: 0; max-height: 0; }
 .expand-enter-to, .expand-leave-from { max-height: 500px; }
+.modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>

@@ -90,10 +90,13 @@ router.post('/claim', authMiddleware, (req, res) => {
   // 给邀请人 +10 积分
   db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(INVITE_REWARD, record.creator_user_id)
 
+  // 给被邀请人 +10 积分
+  db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(INVITE_REWARD, req.userId)
+
   // 记录被邀请人的 referred_by
   db.prepare('UPDATE users SET referred_by = ? WHERE id = ?').run(record.creator_user_id, req.userId)
 
-  res.json({ success: true, reward: INVITE_REWARD })
+  res.json({ success: true, reward: INVITE_REWARD, rewardForInvitee: INVITE_REWARD })
 })
 
 export default router

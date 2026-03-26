@@ -6,6 +6,10 @@ interface User {
   username: string
   isGuest: boolean
   isAdmin: boolean
+  role?: string
+  isStudent?: boolean
+  studentId?: string
+  studentName?: string
 }
 
 // 全局错误处理器
@@ -76,7 +80,11 @@ if (!user.value) {
 const isLoggedIn = computed(() => !!user.value && !user.value.isGuest)
 const isGuest = computed(() => user.value?.isGuest ?? true)
 const isAdmin = computed(() => user.value?.isAdmin ?? false)
-const username = computed(() => user.value?.username || '游客')
+const isStudent = computed(() => user.value?.isStudent === true)
+const isTeacher = computed(() => user.value?.role === 'teacher' || user.value?.role === 'super_admin')
+const isUser = computed(() => user.value?.role === 'user')
+const role = computed(() => user.value?.role ?? 'guest')
+const username = computed(() => user.value?.studentName || user.value?.username || '游客')
 
 // 设置用户
 function setUser(userData: User, userToken: string) {
@@ -114,6 +122,10 @@ export function useAuth() {
     isLoggedIn,
     isGuest,
     isAdmin,
+    isStudent,
+    isTeacher,
+    isUser,
+    role,
     username,
     api,
     setUser,

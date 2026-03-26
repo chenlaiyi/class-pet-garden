@@ -50,6 +50,12 @@ export function useClasses() {
     return res.data
   }
 
+  async function joinClass(inviteCode: string) {
+    const res = await api.post('/classes/join', { inviteCode })
+    await loadClasses()
+    return res.data
+  }
+
   async function updateClass(id: string, name: string) {
     await api.put(`/classes/${id}`, { name })
     if (currentClass.value?.id === id) {
@@ -89,6 +95,7 @@ export function useClasses() {
     loadClasses,
     selectClass,
     createClass,
+    joinClass,
     updateClass,
     deleteClass,
     syncCurrentClass,

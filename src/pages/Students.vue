@@ -13,15 +13,19 @@ import PageLayout from '@/components/layout/PageLayout.vue'
 import { getPetLevelImage } from '@/data/pets'
 
 import ClassModal from '@/components/modals/ClassModal.vue'
+import JoinClassModal from '@/components/modals/JoinClassModal.vue'
 import PetModal from '@/components/modals/PetModal.vue'
+import { useAuth } from '@/composables/useAuth'
 
-const { classes, currentClass, createClass } = useClasses()
+const { classes, currentClass, createClass, joinClass } = useClasses()
+const { isAdmin } = useAuth()
 const { students, isLoading, loadStudents, addStudent: doAddStudent, updateStudent, deleteStudent: doDeleteStudent, batchDeleteStudents, importStudents: doImportStudents } = useStudents()
 const { allTags, loadTags, loadStudentTags, addTagsToStudents, removeTagsFromStudents, getStudentTags, isTagAppliedToStudents } = useTags()
 const toast = useToast()
 const { confirmDialog, showConfirm, closeConfirm } = useConfirm()
 
 const showClassModal = ref(false)
+const showJoinModal = ref(false)
 
 const searchQuery = ref('')
 const filteredStudents = computed(() => {
@@ -215,8 +219,23 @@ async function handleCreateClass(name: string) {
     await createClass(name.trim())
     toast.success('班级创建成功！')
     showClassModal.value = false
-  } catch (error) {
-    toast.error('创建班级失败')
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || '创建班级失败')
+  }
+}
+
+// 加入班级
+async function handleJoinClass(inviteCode: string) {
+  try {
+    const result = await joinClass(inviteCode)
+    toast.success(result.message || '加入成功！')
+    showJoinModal.value = false
+    // 自动切换到刚加入的班级
+    const { selectClass } = useClasses()
+    const newClass = classes.value.find(c => c.id === result.classId)
+    if (newClass) selectClass(newClass)
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || '加入班级失败')
   }
 }
 
@@ -244,8 +263,11 @@ onActivated(() => {
           <div class="text-8xl mb-6 animate-float">🏫</div>
           <h3 class="text-2xl font-bold text-gray-700 mb-3">还没有班级</h3>
           <p class="text-gray-500 mb-6 text-lg">请先创建一个班级，再管理学生</p>
-          <button @click="showClassModal = true" class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg hover:scale-105 transition-all font-bold">
+          <button v-if="isAdmin" @click="showClassModal = true" class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg hover:scale-105 transition-all font-bold">
             ➕ 创建班级
+          </button>
+          <button v-else @click="showJoinModal = true" class="bg-gradient-to-r from-blue-400 to-indigo-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg hover:scale-105 transition-all font-bold">
+            🔑 加入班级
           </button>
         </div>
 
@@ -306,6 +328,7 @@ onActivated(() => {
     <Transition name="modal"><div v-if="showTagModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showTagModal = false"><div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"><h3 class="text-lg font-bold mb-1">🏷️ 管理标签</h3><p class="text-sm text-gray-500 mb-4">{{ taggingStudent ? `为 ${taggingStudent.name}` : `为选中的 ${selectedIds.size} 名学生` }}管理标签</p><div v-if="allTags.length === 0" class="text-center py-6 text-gray-500"><p>暂无标签</p><router-link to="/settings" class="text-orange-500 hover:text-orange-600 text-sm mt-2 inline-block">去创建标签 →</router-link></div><div v-else class="flex flex-wrap gap-2"><button v-for="tag in allTags" :key="tag.id" @click="toggleTag(tag)" class="px-4 py-2 rounded-full text-sm font-medium transition-all" :class="isTagApplied(tag) ? 'ring-2 ring-offset-2 ring-gray-400 scale-105' : 'opacity-70 hover:opacity-100 hover:scale-105'" :style="{ backgroundColor: tag.color, color: 'white' }">{{ tag.name }}<span v-if="isTagApplied(tag)" class="ml-1">✓</span></button></div><div class="flex justify-end gap-2 mt-6"><button @click="showTagModal = false" class="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium shadow-sm hover:bg-orange-600 transition-all">完成</button></div></div></div></Transition>
     <ConfirmDialog :show="confirmDialog.show" :title="confirmDialog.title" :message="confirmDialog.message" :confirm-text="confirmDialog.confirmText" :cancel-text="confirmDialog.cancelText" :type="confirmDialog.type" @confirm="confirmDialog.onConfirm" @cancel="closeConfirm" />
     <ClassModal :show="showClassModal" @close="showClassModal = false" @submit="handleCreateClass" />
+    <JoinClassModal :show="showJoinModal" @close="showJoinModal = false" @submit="handleJoinClass" />
     <PetModal :show="showPetModal" :student="adoptStudent" @close="showPetModal = false" @select="handlePetSelect" />
   </PageLayout>
 </template>

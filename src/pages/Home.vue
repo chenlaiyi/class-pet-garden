@@ -29,7 +29,7 @@ import ClassModal from '@/components/modals/ClassModal.vue'
 import InviteCard from '@/components/InviteCard.vue'
 
 // Auth & Toast
-const { api, isLoggedIn } = useAuth()
+const { api, isLoggedIn, isAdmin } = useAuth()
 const toast = useToast()
 const { confirmDialog, showConfirm, closeConfirm } = useConfirm()
 const { showLevelUpAnimation, levelUpInfo, levelUpPhase, triggerLevelUp } = useLevelUp()
@@ -396,9 +396,12 @@ onActivated(() => {
         <div v-if="!currentClass && classes.length === 0" key="no-class" class="flex flex-col items-center justify-center min-h-[60vh]">
           <div class="text-8xl mb-6 animate-float">🏫</div>
           <h3 class="text-2xl font-bold text-gray-700 mb-3">还没有班级</h3>
-          <p class="text-gray-500 mb-6 text-lg">创建一个班级，开启你的宠物园之旅吧！</p>
-          <button @click="showClassModal = true" class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg hover:scale-105 transition-all font-bold">
+          <p class="text-gray-500 mb-6 text-lg">管理员创建班级后，你可以加入班级参与活动</p>
+          <button v-if="isAdmin" @click="showClassModal = true" class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg hover:scale-105 transition-all font-bold">
             ➕ 创建班级
+          </button>
+          <button v-else @click="showLoginModal = true" class="bg-gradient-to-r from-blue-400 to-indigo-500 text-white px-6 py-3 rounded-2xl hover:shadow-lg hover:scale-105 transition-all font-bold">
+            🔑 登录后加入班级
           </button>
         </div>
 

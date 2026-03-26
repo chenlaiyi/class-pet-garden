@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '../db.js'
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js'
+import { requireAtLeastTeacher } from '../middleware/ownership.js'
 
 const router = Router()
 
@@ -43,7 +44,7 @@ router.get('/', authMiddleware, (req, res) => {
 })
 
 // 创建宠物实例
-router.post('/', authMiddleware, (req, res) => {
+router.post('/', authMiddleware, requireAtLeastTeacher, (req, res) => {
   const { templateId, displayName, studentId, classId } = req.body
   if (!templateId || !displayName || !studentId || !classId) {
     return res.status(400).json({ error: '缺少必要参数' })
@@ -114,7 +115,7 @@ router.get('/:id', authMiddleware, (req, res) => {
 })
 
 // 更新宠物（display_name、level、exp、status）
-router.put('/:id', authMiddleware, (req, res) => {
+router.put('/:id', authMiddleware, requireAtLeastTeacher, (req, res) => {
   const { displayName, level, exp, status } = req.body
 
   // 验证归属
@@ -140,7 +141,7 @@ router.put('/:id', authMiddleware, (req, res) => {
 })
 
 // 删除宠物实例
-router.delete('/:id', authMiddleware, (req, res) => {
+router.delete('/:id', authMiddleware, requireAtLeastTeacher, (req, res) => {
   const existing = db.prepare('SELECT id FROM pet_instances WHERE id = ? AND user_id = ?').get(req.params.id, req.userId)
   if (!existing) return res.status(404).json({ error: '未找到宠物实例' })
 
@@ -152,7 +153,7 @@ router.delete('/:id', authMiddleware, (req, res) => {
 })
 
 // 绑定宠物到学生
-router.post('/bind', authMiddleware, (req, res) => {
+router.post('/bind', authMiddleware, requireAtLeastTeacher, (req, res) => {
   const { petInstanceId, studentId } = req.body
   if (!petInstanceId || !studentId) {
     return res.status(400).json({ error: '缺少必要参数' })
@@ -189,7 +190,7 @@ router.post('/bind', authMiddleware, (req, res) => {
 })
 
 // 解除绑定
-router.post('/unbind', authMiddleware, (req, res) => {
+router.post('/unbind', authMiddleware, requireAtLeastTeacher, (req, res) => {
   const { petInstanceId } = req.body
   if (!petInstanceId) return res.status(400).json({ error: '缺少宠物实例ID' })
 
